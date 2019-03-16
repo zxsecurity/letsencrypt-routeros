@@ -9,12 +9,12 @@
 ### How it works:
 * Dedicated Linux renew and push certificates to RouterOS / Mikrotik
 * After CertBot renew your certificates
-* The script connects to RouterOS / Mikrotik using DSA Key (without password or user input)
+* The script connects to RouterOS / Mikrotik using password (requires user input)
 * Delete previous certificate files
 * Delete the previous certificate
 * Upload two new files: **Certificate** and **Key**
 * Import **Certificate** and **Key**
-* Change **SSTP Server Settings** to use new certificate
+* Change **IP www-ssl service** to use new certificate
 * Delete certificate and key files form RouterOS / Mikrotik storage
 
 ### Installation on Ubuntu 16.04
@@ -24,39 +24,26 @@ Download the repo to your system
 ```sh
 sudo -s
 cd /opt
-git clone https://github.com/gitpel/letsencrypt-routeros
+git clone https://github.com/yoanm/letsencrypt-routeros
 ```
 Edit the settings file:
 ```sh
 vim /opt/letsencrypt-routeros/letsencrypt-routeros.settings
 ```
-| Variable Name | Value | Description |
-| ------ | ------ | ------ |
-| ROUTEROS_USER | admin | user with admin rights to connect to RouterOS |
-| ROUTEROS_HOST | 10.0.254.254 | RouterOS\Mikrotik IP |
-| ROUTEROS_SSH_PORT | 22 | RouterOS\Mikrotik PORT |
-| ROUTEROS_PRIVATE_KEY | /opt/letsencrypt-routeros/id_dsa | Private Key to connecto to RouterOS |
-| DOMAIN | mydomain.com | Use main domain for wildcard certificate or subdomain for subdomain certificate |
+| Variable Name  | Description |
+| ------ | ------ |
+| ROUTEROS_USER | user with admin rights to connect to RouterOS |
+| ROUTEROS_HOST | RouterOS\Mikrotik IP |
+| ROUTEROS_SSH_PORT | RouterOS\Mikrotik PORT (default 22) |
+| DOMAIN | Use main domain for wildcard certificate or subdomain for subdomain certificate |
+| CERTIFICATE | Full chain certificate path (default to `/etc/letsencrypt/live/$DOMAIN/fullchain.pem`) |
+| KEY | Private key path (default to `/etc/letsencrypt/live/$DOMAIN/privkey.pem`) |
 
 
 Change permissions:
 ```sh
 chmod +x /opt/letsencrypt-routeros/letsencrypt-routeros.sh
 ```
-Generate DSA Key for RouterOS
-
-*Make sure to leave the passphrase blank (-N "")*
-
-```sh
-ssh-keygen -t dsa -f /opt/letsencrypt-routeros/id_dsa -N ""
-```
-
-Send Generated DSA Key to RouterOS / Mikrotik
-```sh
-source /opt/letsencrypt-routeros/letsencrypt-routeros.settings
-scp -P $ROUTEROS_SSH_PORT /opt/letsencrypt-routeros/id_dsa.pub "$ROUTEROS_USER"@"$ROUTEROS_HOST":"id_dsa.pub" 
-```
-
 ### Setup RouterOS / Mikrotik side
 *Check that user is the same as in the settings file letsencrypt-routeros.settings*
 
@@ -66,9 +53,6 @@ scp -P $ROUTEROS_SSH_PORT /opt/letsencrypt-routeros/id_dsa.pub "$ROUTEROS_USER"@
 ```sh
 :put "Enable SSH"
 /ip service enable ssh
-
-:put "Add to the user DSA Public Key"
-/user ssh-keys import user=admin public-key-file=id_dsa.pub
 ```
 
 ### CertBot Let's Encrypt
@@ -99,7 +83,7 @@ certbot certonly --preferred-challenges=dns --manual -d $DOMAIN --manual-public-
 *To use script without settings file:*
 
 ```sh
-./opt/letsencrypt-routeros/letsencrypt-routeros.sh [RouterOS User] [RouterOS Host] [SSH Port] [SSH Private Key] [Domain]
+./opt/letsencrypt-routeros/letsencrypt-routeros.sh [RouterOS User] [RouterOS Host] [SSH Port] [Domain]
 ```
 *To use script with CertBot hooks for wildcard domain:*
 ```sh
@@ -119,7 +103,7 @@ $routeros /ip service set api-ssl certificate=$DOMAIN.pem_0
 ```
 ---
 ### Licence MIT
-Copyright 2018 Konstantin Gimpel
+Copyright 2018
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

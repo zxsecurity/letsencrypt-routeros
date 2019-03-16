@@ -2,8 +2,10 @@
 ## Settings file for RouterOS Let's Encrypt Script
 ## Please avoid space
 
-ROUTEROS_USER=admin
-ROUTEROS_HOST=10.0.254.254
+ROUTEROS_USER=__ROUTER_USERNAME__
+ROUTEROS_HOST=__ROUTER_IP__
 ROUTEROS_SSH_PORT=22
-ROUTEROS_PRIVATE_KEY=/opt/letsencrypt-routeros/id_dsa
-DOMAIN=vpnserver.yourdomain.com
+DOMAIN=__ROUTER_DOMAIN__
+
+CERTIFICATE=/etc/letsencrypt/live/$DOMAIN/fullchain.pem
+KEY=/etc/letsencrypt/live/$DOMAIN/privkey.pem
