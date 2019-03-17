@@ -34,13 +34,7 @@ fi
 
 if [ ! -f $CERTIFICATE ] && [ ! -f $KEY ]; then
         echo -e "\nFile(s) not found:\n$CERTIFICATE\n$KEY\n"
-        echo -e "Please use CertBot Let'sEncrypt:"
-        echo "============================"
-        echo "certbot certonly --preferred-challenges=dns --manual -d $DOMAIN --manual-public-ip-logging-ok"
-        echo "or (for wildcard certificate):"
-        echo "certbot certonly --preferred-challenges=dns --manual -d *.$DOMAIN --manual-public-ip-logging-ok --server https://acme-v02.api.letsencrypt.org/directory"
-        echo "==========================="
-        echo -e "and follow instructions from CertBot\n"
+        echo "Please create certificate and key first !"
         exit 1
 fi
 
