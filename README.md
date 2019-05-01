@@ -28,7 +28,9 @@ git clone https://github.com/yoanm/letsencrypt-routeros
 ```
 Edit the settings file:
 ```sh
-vim /opt/letsencrypt-routeros/letsencrypt-routeros.settings
+cd /opt/letsencrypt-routeros
+cp letsencrypt-routeros.settings.example letsencrypt-routeros.settings
+vim letsencrypt-routeros.settings
 ```
 | Variable Name  | Description |
 | ------ | ------ |
