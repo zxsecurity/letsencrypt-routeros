@@ -2,8 +2,11 @@
 ## Settings file for RouterOS Let's Encrypt Script
 ## Please avoid space
 
+declare -a ROUTEROS_HOSTS
+
 ROUTEROS_USER=__ROUTER_USERNAME__
-ROUTEROS_HOST=__ROUTER_IP__
+ROUTEROS_HOST=__ROUTER_1_IP__
+#ROUTEROS_HOSTS=(__ROUTER_1_IP__ __ROUTER_2_IP__) # When multiple devices are needed
 ROUTEROS_SSH_PORT=22
 DOMAIN=__ROUTER_DOMAIN__
 

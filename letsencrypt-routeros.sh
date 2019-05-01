@@ -11,6 +11,8 @@ trap die ERR
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 CONFIG_FILE=$DIR/letsencrypt-routeros.settings
 
+declare -a ROUTEROS_HOSTS
+
 if [[ -f "$CONFIG_FILE" ]]; then
         source $CONFIG_FILE
 fi
@@ -24,60 +26,85 @@ else
         DOMAIN=$4
 fi
 
-if [[ -z $ROUTEROS_USER ]] || [[ -z $ROUTEROS_HOST ]] || [[ -z $ROUTEROS_SSH_PORT ]] || [[ -z $DOMAIN ]]; then
+if [[ ! -z $ROUTEROS_HOST ]]; then
+        ROUTEROS_HOSTS=($ROUTEROS_HOST)
+fi
+
+if [[ -z $ROUTEROS_USER || -z $ROUTEROS_HOSTS || -z $ROUTEROS_SSH_PORT || -z $DOMAIN ]]; then
         echo "Check the config file $CONFIG_FILE or start with params: $0 [RouterOS User] [RouterOS Host] [SSH Port] [Domain]"
         echo "Please avoid spaces"
         exit 1
 fi
 
-#Create alias for RouterOS command
-routeros="ssh  $ROUTEROS_USER@$ROUTEROS_HOST -p $ROUTEROS_SSH_PORT"
-
-#Check connection to RouterOS
-$routeros /system resource print
-RESULT=$?
-
-if [[ ! $RESULT == 0 ]]; then
-        echo -e "\nError in: $routeros"
-        echo "More info: https://wiki.mikrotik.com/wiki/Use_SSH_to_execute_commands_(DSA_key_login)"
-        exit 1
-else
-        echo -e "\nConnection to RouterOS Successful!\n" 
-fi
-
-if [ ! -f $CERTIFICATE ] && [ ! -f $KEY ]; then
+if [[ ! -f $CERTIFICATE && ! -f $KEY ]]; then
         echo -e "\nFile(s) not found:\n$CERTIFICATE\n$KEY\n"
         echo "Please create certificate and key first !"
         exit 1
 fi
 
-# Remove previous certificate
-$routeros /certificate remove [find name=$DOMAIN.pem_0]
+#Create alias for RouterOS command
+routeros() {
+        ssh $ROUTEROS_USER@$ROUTEROS_HOST -p $ROUTEROS_SSH_PORT $@
+}
 
-# Create Certificate
-# Delete Certificate file if the file exist on RouterOS
-$routeros /file remove $DOMAIN.pem > /dev/null
-# Upload Certificate to RouterOS
-scp -q -P $ROUTEROS_SSH_PORT  "$CERTIFICATE" "$ROUTEROS_USER"@"$ROUTEROS_HOST":"$DOMAIN.pem"
+for ROUTEROS_HOST in ${ROUTEROS_HOSTS[@]}; do
+        #Check connection to RouterOS
+        routeros /system resource print
+        RESULT=$?
+
+        if [[ ! $RESULT == 0 ]]; then
+                echo -e "\nError in: $ROUTEROS_HOST"
+                echo "More info: https://wiki.mikrotik.com/wiki/Use_SSH_to_execute_commands_(DSA_key_login)"
+                exit 1
+        else
+                echo -e "\nConnection to $ROUTEROS_HOST Successful!\n" 
+        fi
+
+done
+
+for ROUTEROS_HOST in ${ROUTEROS_HOSTS[@]}; do
+        echo -e "[$ROUTEROS_HOST] - Remove previous certificate" 
+        # Remove previous certificate
+        routeros /certificate remove [find name=$DOMAIN.pem_0]
+
+        # Create Certificate
+        # Delete Certificate file if the file exist on RouterOS
+        routeros /file remove $DOMAIN.pem > /dev/null
+        # Upload Certificate to RouterOS
+        echo -e "[$ROUTEROS_HOST] - Upload new certificate" 
+        scp -q -P $ROUTEROS_SSH_PORT  "$CERTIFICATE" "$ROUTEROS_USER"@"$ROUTEROS_HOST":"$DOMAIN.pem"
+done
+
 sleep 2
-# Import Certificate file
-$routeros /certificate import file-name=$DOMAIN.pem passphrase=\"\"
-# Delete Certificate file after import
-$routeros /file remove $DOMAIN.pem
 
-# Create Key
-# Delete Certificate file if the file exist on RouterOS
-$routeros /file remove $KEY.key > /dev/null
-# Upload Key to RouterOS
-scp -q -P $ROUTEROS_SSH_PORT "$KEY" "$ROUTEROS_USER"@"$ROUTEROS_HOST":"$DOMAIN.key"
+for ROUTEROS_HOST in ${ROUTEROS_HOSTS[@]}; do
+        echo -e "[$ROUTEROS_HOST] Import new certificate" 
+        # Import Certificate file
+        routeros /certificate import file-name=$DOMAIN.pem passphrase=\"\"
+        # Delete Certificate file after import
+        routeros /file remove $DOMAIN.pem
+
+        # Create Key
+        echo -e "[$ROUTEROS_HOST] Remove previous private key" 
+        # Delete Certificate file if the file exist on RouterOS
+        routeros /file remove $KEY.key > /dev/null
+        echo -e "[$ROUTEROS_HOST] Upload new private key" 
+        # Upload Key to RouterOS
+        scp -q -P $ROUTEROS_SSH_PORT "$KEY" "$ROUTEROS_USER"@"$ROUTEROS_HOST":"$DOMAIN.key"
+done
+
 sleep 2
-# Import Key file
-$routeros /certificate import file-name=$DOMAIN.key passphrase=\"\"
-# Delete Certificate file after import
-$routeros /file remove $DOMAIN.key
 
-# Setup Certificate to SSTP Server
-$routeros /ip service set certificate=$DOMAIN.pem_0 www-ssl
-#$routeros /interface sstp-server server set certificate=$DOMAIN.pem_0
+for ROUTEROS_HOST in ${ROUTEROS_HOSTS[@]}; do
+        echo -e "[$ROUTEROS_HOST] Import new private key" 
+        # Import Key file
+        routeros /certificate import file-name=$DOMAIN.key passphrase=\"\"
+        # Delete Certificate file after import
+        routeros /file remove $DOMAIN.key
+
+        # Setup Certificate to SSTP Server
+        routeros /ip service set certificate=$DOMAIN.pem_0 www-ssl
+        #$routeros /interface sstp-server server set certificate=$DOMAIN.pem_0
+done
 
 exit 0
