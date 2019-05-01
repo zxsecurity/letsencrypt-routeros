@@ -1,9 +1,22 @@
 #!/bin/bash
-CONFIG_FILE=letsencrypt-routeros.settings
+
+set -e
+
+die() {
+  echo "Failed on line $(caller)" >&2
+}
+
+trap die ERR
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+CONFIG_FILE=$DIR/letsencrypt-routeros.settings
+
+if [[ -f "$CONFIG_FILE" ]]; then
+        source $CONFIG_FILE
+fi
 
 if [[ -z $1 ]] || [[ -z $2 ]] || [[ -z $3 ]] || [[ -z $4 ]]; then
         echo -e "Usage: $0 or $0 [RouterOS User] [RouterOS Host] [SSH Port] [Domain]\n"
-        source $CONFIG_FILE
 else
         ROUTEROS_USER=$1
         ROUTEROS_HOST=$2
